@@ -10,23 +10,39 @@ var config = {
 firebase.initializeApp(config);
 
 // Get elements
-var box = $('#box');
+var foodTable = $('#foodTable');
+var waresTable = $('#waresTable');
+var foodBuget = $('#foodBuget');
+var waresBuget = $('#waresBuget');
+
 var btnSubmit = $('#submit');
 
 // Get a reference to the database service
 const dbRoot = firebase.database().ref();
 
 // Create references
-const dbRefIncome = dbRoot.child('income');
+const dbRefFoodBuget = dbRoot.child('foodBuget');
+const dbRefWaresBuget = dbRoot.child('waresBuget');
 const dbRefInfo = dbRoot.child('info');
+
 var currentId = 0;
+var totalFoodBuget = 0;
+var totalWaresBuget = 0;
 
 dbRefInfo.on('value', function(snap){
+  foodBuget.empty();
+  waresBuget.empty();
+
   currentId = snap.val().currentId;
+  totalFoodBuget = snap.val().totalFoodBuget;
+  totalWaresBuget = snap.val().totalWaresBuget;
+
+  foodBuget.append(totalFoodBuget);
+  waresBuget.append(totalWaresBuget);
 });
 
-dbRefIncome.on('value', function(snap){
-box.empty();
+dbRefFoodBuget.on('value', function(snap){
+foodTable.empty();
 
   snap.forEach(function(snapshot){
 
@@ -37,52 +53,135 @@ box.empty();
     snapshot.forEach(function(childSnapshot){
 
       var key = childSnapshot.key;
-      console.log(key);
       var val = childSnapshot.val();
       var order = val.order;
       var price = val.price;
 
-      box.append("<tr><th scope='row'>"+ year + "-" + mouth + "-" +  day + "</th><td>"
+      foodTable.append("<tr><th scope='row'>"+ year + "-" + mouth + "-" +  day + "</th><td>"
       + order + "</td><td>"
-      + price + "</td><td class='text-center'><button type='button' class='btn btn-outline-danger' onclick='handleDel("+year+","+mouth+","+day+","+key+")'>x</button></td></tr>");
+      + price + "</td><td class='text-center'><button type='button' class='btn btn-outline-danger' onclick='handleDelFood("+year+","+mouth+","+day+","+key+","+price+")'>x</button></td></tr>");
 
     });
 
   });
 });
 
-btnSubmit.on('click', function(){
+dbRefWaresBuget.on('value', function(snap){
+waresTable.empty();
+
+  snap.forEach(function(snapshot){
+
+    var day = snapshot.key.substring(8, 11);
+    var mouth = snapshot.key.substring(5, 7);
+    var year = snapshot.key.substring(0, 4);
+    snapshot.forEach(function(childSnapshot){
+
+      var key = childSnapshot.key;
+      var val = childSnapshot.val();
+      var order = val.order;
+      var price = val.price;
+
+      waresTable.append("<tr><th scope='row'>"+ year + "-" + mouth + "-" +  day + "</th><td>"
+      + order + "</td><td>"
+      + price + "</td><td class='text-center'><button type='button' class='btn btn-outline-danger' onclick='handleDelWares("+year+","+mouth+","+day+","+key+","+price+")'>x</button></td></tr>");
+
+    });
+
+  });
+});
+
+function handleCreate(){
   var inputDate = document.getElementById('date');
   var inputOrder = document.getElementById('order');
   var inputPrice = document.getElementById('price');
+  var inputType = document.getElementById('type');
+
+  var iInputPrice = parseInt(inputPrice.value);
+  var iTotalFoodBuget = parseInt(totalFoodBuget);
+  var sumTotalFoodBuget = totalFoodBuget + iInputPrice;
+  var iTotalWaresBuget = parseInt(totalWaresBuget);
+  var sumTotalWaresBuget = totalWaresBuget + iInputPrice;
+
   var orderId = currentId + 1;
 
-  var dbRef = dbRefIncome.child(inputDate.value);
-  dbRef.child(orderId).set({
-    order: inputOrder.value,
-    price: inputPrice.value
-  });
+  if (inputType.value == 1) {
 
-  dbRefInfo.set({
-    currentId: orderId
-  });
+    var dbRef = dbRefFoodBuget.child(inputDate.value);
+    dbRef.child(orderId).set({
+      order: inputOrder.value,
+      price: inputPrice.value,
+    });
 
+    dbRefInfo.update({
+      currentId: orderId,
+      totalFoodBuget: sumTotalFoodBuget
+    });
+
+  }
+  else if (inputType.value == 2) {
+
+    var dbRef = dbRefWaresBuget.child(inputDate.value);
+    dbRef.child(orderId).set({
+      order: inputOrder.value,
+      price: inputPrice.value,
+    });
+
+    dbRefInfo.update({
+      currentId: orderId,
+      totalWaresBuget: sumTotalWaresBuget
+    });
+  }
+  else {
+    alert('test');
+  }
   window.location.replace("https://tickstudiu.github.io/income-firebase-github-page/salary.html");
-});
+}
 
-function handleDel(y , m , d, k) {
-  if (m < 10) {
-    m = '0' + m;
+function handleDelFood(year , mouth , day, key, price, type) {
+  if (mouth < 10) {
+    mouth = '0' + mouth;
   }
 
-  if (d < 10) {
-    d = '0' + d;
+  if (day < 10) {
+    day = '0' + day;
   }
 
-  var path = 'income/' + y +'-'+ m +'-'+ d + '/' + k;
-  console.log(k);
+  var iPrice = parseInt(price);
+  var iTotalFoodBuget = parseInt(totalFoodBuget);
+  var sumTotalFoodBuget = totalFoodBuget - iPrice;
+
+  var path = 'foodBuget/'+ year +'-'+ mouth +'-'+ day + '/' + key;;
   var target = firebase.database().ref(path);
   target.remove().then(function(){
+    dbRefInfo.update({
+      totalFoodBuget: sumTotalFoodBuget,
+    });
+    console.log("remove done");
+  }).catch(function(error){
+    console.log("remove failed: " + error.message);
+  })
+}
+
+function handleDelWares(year , mouth , day, key, price, type) {
+  if (mouth < 10) {
+    mouth = '0' + mouth;
+  }
+
+  if (day < 10) {
+    day = '0' + day;
+  }
+
+  var iPrice = parseInt(price);
+  var iTotalWaresBuget = parseInt(totalWaresBuget);
+  var sumTotalWaresBuget = totalWaresBuget - iPrice;
+
+  var path = 'waresBuget/'+ year +'-'+ mouth +'-'+ day + '/' + key;;
+  var target = firebase.database().ref(path);
+  target.remove().then(function(){
+    dbRefInfo.update({
+      totalWaresBuget: sumTotalWaresBuget,
+    });
+
     console.log("remove done");
   }).catch(function(error){
     console.log("remove failed: " + error.message);
