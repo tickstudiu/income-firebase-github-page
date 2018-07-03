@@ -52,5 +52,5 @@ btnSubmit.on('click', function(){
     price: inputPrice.value
   })
 
-  window.location.replace("http://stackoverflow.com");
+  window.location.replace("https://tickstudiu.github.io/income-firebase-github-page/salary.html");
 });
